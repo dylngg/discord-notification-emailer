@@ -1,2 +1,2 @@
-# discord_notification_emailer
-A discord bot that forwards messages to an email.
+# Discord Notification Emailer
+A discord bot that forwards messages to an email. In progress.

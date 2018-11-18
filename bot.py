@@ -1,112 +1,99 @@
 import discord
-import sys
-import os
 import logging
-import asyncio
-import threading
 import socket
-import time
-import smtplib
-from email.message import EmailMessage
 import configparser
+import clusterer
+import email_tools
+
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
 
 
-class ClusterManager():
+class EmailerBot(discord.Client):
 
-    def __init__(self, callback, clustering_period=10):
-        """Defines a cluster manager that allows for the clustering of objects
-        in a period of time. After that period of time, a callback is called
-        and the cluster is reset.
+    def __init__(self, emailer, to, *args, clustering_period=60,
+                 sender=f'discordbot@{socket.gethostname()}', loop=None,
+                 **options):
+        """Inializes a bot that sends new messages to a email
 
-        :param callback: A function to call when the clustering period is
-        over. The objects in the cluster are passed into that callback as the
-        sole argument.
-        :param clustering_period: The period of time in seconds in which all
-        objects added are clustered together.
+        :param emailer: A email_tools.Emailer obj that will be used to send
+        emails.
+        :param clustering_period: The period of time between messages in which
+        messages are grouped together in a single email.
         """
-        self.callback = callback
-        self.clustering_period = clustering_period
-        self._clustering = False
-        self._cluster = []
+        self.emailer = emailer
+        self.to = to
+        self.sender = sender
+        self.cluster_manager = clusterer.ClusterManager(self.send_email,
+                                                        clustering_period)
+        super().__init__(*args, loop=loop, **options)
 
-    def append(self, obj):
-        """Appends a obj and clusters it accordingly.
+    async def on_ready(self):
+        logger.info('Bot is now online.')
 
-        :param obj: An object that is added to the cluster
-        """
-        if not self._clustering:
-            self._start_clustering()
+    async def on_message(self, message):
+        await self.add_to_cluster(message)
 
-        self._cluster.append(obj)
+    async def add_to_cluster(self, message):
+        self.cluster_manager.append(message)
 
-    def _start_clustering(self):
-        """Starts a clustering timer that does a callback with all the obj in
-        the cluster after a period of time.
-        """
-        self._clustering = True
-        t = threading.Thread(target=self.end_cluster)
-        t.start()
+    def send_email(self, messages):
+        channels = set([msg.channel.name for msg in messages])
+        channel_content = {channel: '' for channel in channels}
 
-    def end_cluster(self):
-        logging.debug("Waiting...")
-        time.sleep(self.clustering_period)
-        logging.debug("Calling callback")
-        self.callback(self._cluster)
-        self._clustering = False
-        self._cluster = []
+        for message in messages:
+            thread = (f'<br><h2>{message.author.name}</h2>'
+                      f'<span class="date">{message.timestamp.strftime("%H:%M on %b %d")}'
+                      f'</span>')
+            thread += f'<br><p>{message.content}</p>'
+            channel_content[message.channel.name] += thread
 
-config = configparser.ConfigParser()
-config.read('config.cfg')
+        style = ('* { font-size: 14px; }'
+                 '.date { padding-left: 15px; opacity: 50%; }'
+                 'h2 { display: inline; padding-bottom: 15px; }')
+        content = (f'<html><head><style>{style}</style></head><body>'
+                   f'{"".join([th for th in channel_content.values()])}'
+                   f'</body></html>')
+        subject = (f'{len(messages)} New Messages from Discord '
+                   f'({",".join(channels)})')
+        self.emailer.send_email(self.to,
+                                self.sender,
+                                subject,
+                                content,
+                                content_type='text/html')
 
-# Email
-email_config = config['Email']
-to = email_config['to']
-sender = f'discord_bot@{str(socket.gethostname())}'
-smtp_username = email_config.get('smtp_username')
-smtp_server = email_config.get('smtp_server')
-smtp_port = email_config.get('smtp_port')
-smtp_password = email_config.get('smtp_password')
 
-# Bot Configuration
-clustering_config = config['Clustering']
-clustering_period = clustering_config.get('clustering_period', 60)
-key = config['Discord'].get('key')
+def configuration(filename='config.cfg'):
+    """Reads a config file and returns a dict with it's properties"""
+    reader = configparser.ConfigParser()
+    reader.read(filename)
+    config = {}
 
-def send_message(messages):
-    content = "Your teammates have posted some messages. The messages are below:<br>"
-    for message in messages:
-        content += (f"{message.author} on {message.channel.name}"
-                    f"({message.timestamp.strftime('%I')}): {message.clean_content}<br>")
+    # Email
+    email_config = reader['Email']
+    config['to'] = email_config['to']
+    config['smtp_username'] = email_config.get('smtp_username')
+    config['smtp_server'] = email_config.get('smtp_server')
+    config['smtp_port'] = email_config.get('smtp_port')
+    config['smtp_password'] = email_config.get('smtp_password')
 
-    msg = EmailMessage()
-    msg.set_content(content)
+    # Bot Configuration
+    clustering_config = reader['Clustering']
+    config['period'] = int(clustering_config.get('clustering_period', 60))
+    config['key'] = reader['Discord'].get('key')
 
-    msg['Subject'] = f'{str(len(messages))} New messages from discord!'
-    msg['From'] = sender
-    msg['To'] = to
+    return config
 
-    print(smtp_server, smtp_port)
-    mail = smtplib.SMTP()
-    mail.connect(smtp_server, smtp_port)
-    mail.starttls()
-    mail.login(smtp_username, smtp_password)
-    mail.sendmail(sender, to, msg.as_string())
-    mail.quit()
 
-logger = logging.getLogger('discord_emailer')
-logging.basicConfig(stream=sys.stdout,
-                    level=os.environ.get('LOGLEVEL', 'DEBUG'))
+def main():
+    config = configuration()
+    emailer = email_tools.Emailer(config['smtp_username'],
+                                  config['smtp_server'],
+                                  config['smtp_port'],
+                                  config['smtp_password'])
+    bot = EmailerBot(emailer, config['to'], clustering_period=config['period'])
+    bot.run(config['key'])
 
-clusterer = ClusterManager(send_message)
-client = discord.Client()
 
-@client.event
-async def on_ready():
-    logger.info('Bot is now online.')
-
-@client.event
-async def on_message(message):
-    logger.debug('Recieved %s', message.content)
-    clusterer.append(message)
-
-client.run(key)
+if __name__ == '__main__':
+    main()

@@ -1,6 +1,7 @@
 import discord
 import logging
 import socket
+import datetime
 import configparser
 import clusterer
 import email_tools
@@ -20,6 +21,8 @@ class EmailerBot(discord.Client):
         emails.
         :param clustering_period: The period of time between messages in which
         messages are grouped together in a single email.
+        :param sender: The sender address of the email (Note: SMTP settings
+        may override this)
         """
         self.emailer = emailer
         self.to = to
@@ -32,35 +35,56 @@ class EmailerBot(discord.Client):
         logger.info('Bot is now online.')
 
     async def on_message(self, message):
-        await self.add_to_cluster(message)
-
-    async def add_to_cluster(self, message):
+        """Adds a message to the cluster"""
         self.cluster_manager.append(message)
 
     def send_email(self, messages):
+        """
+        Sends a email using the emailer with the updated messages.
+        """
         channels = set([msg.channel.name for msg in messages])
-        channel_content = {channel: '' for channel in channels}
+        content = self._start_html()
 
+        author_channel = ("", "")
         for message in messages:
-            thread = (f'<br><h2>{message.author.name}</h2>'
-                      f'<span class="date">{message.timestamp.strftime("%H:%M on %b %d")}'
-                      f'</span>')
-            thread += f'<br><p>{message.content}</p>'
-            channel_content[message.channel.name] += thread
+            if (message.author, message.channel) != author_channel:
+                content += self._format_header(message.author,
+                                               message.channel,
+                                               message.timestamp)
+            content += self._format_message(message)
+            author_channel = (message.author, message.channel)
 
-        style = ('* { font-size: 14px; }'
-                 '.date { padding-left: 15px; opacity: 50%; }'
-                 'h2 { display: inline; padding-bottom: 15px; }')
-        content = (f'<html><head><style>{style}</style></head><body>'
-                   f'{"".join([th for th in channel_content.values()])}'
-                   f'</body></html>')
+        content += self._end_html()
         subject = (f'{len(messages)} New Messages from Discord '
-                   f'({",".join(channels)})')
+                   f'({", ".join(channels)})')
         self.emailer.send_email(self.to,
                                 self.sender,
                                 subject,
                                 content,
                                 content_type='text/html')
+
+    def _start_html(self):
+        style = ('* { font-size: 14px; }'
+                 '.date { padding-left: 15px; opacity: 50%; }'
+                 'h2 { display: inline; padding-bottom: 15px; }')
+        return f'<html><head><style>{style}</style></head><body>'
+
+    def _end_html(self):
+        return '</body></html>'
+
+    def _format_message(self, message):
+        """Formats a message line into html"""
+        return f'<p>{message.clean_content}</p>'
+
+    def _format_header(self, user, channel, dt):
+        """Formats a header based off of a discord.User and a datetime obj into
+        html
+        """
+        date = dt.replace(tzinfo=datetime.timezone.utc).astimezone(tz=None)
+        header = (f'<br><h2>{user.name} ({channel.name})</h2>'
+                  f'<span class="date">{date.strftime("%H:%M on %b %d")}'
+                  f'</span>')
+        return header
 
 
 def configuration(filename='config.cfg'):

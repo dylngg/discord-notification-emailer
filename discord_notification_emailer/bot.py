@@ -7,8 +7,9 @@ import configparser
 import clusterer
 import email_tools
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class EmailerBot(discord.Client):

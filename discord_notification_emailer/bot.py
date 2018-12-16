@@ -1,6 +1,7 @@
 import discord
 import logging
 import socket
+import os
 import datetime
 import configparser
 import clusterer
@@ -63,13 +64,19 @@ class EmailerBot(discord.Client):
                                 content,
                                 content_type='text/html')
 
-    def _start_html(self):
-        style = ('* { font-size: 14px; }'
-                 '.date { padding-left: 15px; opacity: 50%; }'
-                 'h2 { display: inline; padding-bottom: 15px; }')
+    def _start_html(self, style_loc='style.css'):
+        """Starts the beginning of the html"""
+        style = ''
+        with open(style_loc) as stylesheet:
+            try:
+                style = stylesheet.read().replace('\n', '')
+            except IOError:
+                logger.warning('CSS file: %s could not be found!', style_loc)
+                pass
         return f'<html><head><style>{style}</style></head><body>'
 
     def _end_html(self):
+        """Ends the html"""
         return '</body></html>'
 
     def _format_message(self, message):
@@ -87,7 +94,7 @@ class EmailerBot(discord.Client):
         return header
 
 
-def configuration(filename='config.cfg'):
+def configuration(filename='../config.cfg'):
     """Reads a config file and returns a dict with it's properties"""
     reader = configparser.ConfigParser()
     reader.read(filename)

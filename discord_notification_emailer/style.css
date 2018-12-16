@@ -1,0 +1,11 @@
+* {
+    font-size: 14px;
+}
+.date {
+    padding-left: 15px;
+    opacity: 50%;
+}
+h2 {
+    display: inline;
+    padding-bottom: 15px;
+}

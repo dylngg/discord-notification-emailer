@@ -1,0 +1,11 @@
+[Unit]
+Description=A discord notification emailer
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/Documents/discord_notification_emailer/discord_notification_emailer
+ExecStart=/usr/bin/python3.6 bot.py
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

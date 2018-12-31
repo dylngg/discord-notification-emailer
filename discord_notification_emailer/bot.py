@@ -119,10 +119,13 @@ def configuration(filename='../config.cfg'):
 
 def main():
     config = configuration()
-    emailer = email_tools.Emailer(config['smtp_username'],
-                                  config['smtp_server'],
-                                  config['smtp_port'],
-                                  config['smtp_password'])
+    if 'smtp_username' in config:
+        emailer = email_tools.Emailer(config['smtp_server'],
+                                      config['smtp_port'],
+                                      config['smtp_username'],
+                                      config['smtp_password'])
+    else:  # assume it's just a plain mail server
+        emailer = email_tools.Emailer(config['smtp_server'])
     bot = EmailerBot(emailer, config['to'], clustering_period=config['period'])
     bot.run(config['key'])
 

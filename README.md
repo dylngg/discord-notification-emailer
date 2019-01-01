@@ -67,6 +67,7 @@ After those things are installed, you can `cd discord_notification_emailer` and 
 
 For MacOS, you'll want to use the [http://www.launchd.info/](http://www.launchd.info/) program.
 
-For Linux, I'd suggest `systemd` if you're on a newer system (Or just be a poor man and append a `&` at the end, and make sure the computer never shuts down (JK...)).
+For Linux, I'd suggest `systemd` if you're on a newer system that uses it. There is a example service file in this repository.
 
 For Windows, `¯\_(ツ)_/¯` (I'm not a windows person). This link might be helpful (https://www.howtogeek.com/50786/using-srvstart-to-run-any-application-as-a-windows-service/)
+

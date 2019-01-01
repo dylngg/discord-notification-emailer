@@ -1,9 +1,9 @@
 import discord
 import logging
 import socket
-import os
 import datetime
 import configparser
+import argparse
 import clusterer
 import email_tools
 
@@ -95,10 +95,10 @@ class EmailerBot(discord.Client):
         return header
 
 
-def configuration(filename='../config.cfg'):
+def configuration(filepath):
     """Reads a config file and returns a dict with it's properties"""
     reader = configparser.ConfigParser()
-    reader.read(filename)
+    reader.read(filepath)
     config = {}
 
     # Email
@@ -117,18 +117,31 @@ def configuration(filename='../config.cfg'):
     return config
 
 
-def main():
-    config = configuration()
+def arguments():
+    desc = 'A discord notification emailer'
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument('-c', '--config',
+                        help='The filepath of the configuration file. '
+                             '(Defaults to ../config.cfg)')
+    return parser.parse_args()
+
+
+def main(args):
+    config_path = '../config.cfg'
+    if args.config:
+        config_path = args.config
+    config = configuration(config_path)
     if 'smtp_username' in config:
         emailer = email_tools.Emailer(config['smtp_server'],
                                       config['smtp_port'],
                                       config['smtp_username'],
                                       config['smtp_password'])
-    else:  # assume it's just a plain mail server
+    # assume it's just a plain mail server
+    else:
         emailer = email_tools.Emailer(config['smtp_server'])
     bot = EmailerBot(emailer, config['to'], clustering_period=config['period'])
     bot.run(config['key'])
 
 
 if __name__ == '__main__':
-    main()
+    main(arguments())

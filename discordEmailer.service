@@ -5,7 +5,7 @@ Description=A discord notification emailer
 Type=simple
 WorkingDirectory=/home/pi/Documents/discord_notification_emailer/discord_notification_emailer
 ExecStart=/usr/bin/python3.6 bot.py
-Restart=on-failure
+Restart=always
 
 [Install]
 WantedBy=default.target

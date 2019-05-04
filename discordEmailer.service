@@ -3,8 +3,8 @@ Description=A discord notification emailer
 
 [Service]
 Type=simple
-WorkingDirectory=/home/pi/Documents/discord_notification_emailer/discord_notification_emailer
-ExecStart=/usr/bin/python3.6 bot.py
+WorkingDirectory=/home/pi/Documents/discord-notification-emailer/discord_notification_emailer
+ExecStart=/usr/local/bin/python3.6 bot.py
 Restart=always
 
 [Install]

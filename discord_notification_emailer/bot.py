@@ -52,7 +52,7 @@ class EmailerBot(discord.Client):
             if (message.author, message.channel) != author_channel:
                 content += self._format_header(message.author,
                                                message.channel,
-                                               message.timestamp)
+                                               message.created_at)
             content += self._format_message(message)
             author_channel = (message.author, message.channel)
 

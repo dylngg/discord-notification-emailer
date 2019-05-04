@@ -8,7 +8,7 @@ Upon a new message in any of the text channels, the bot will start recording the
 
 ## Installing
 
-Discord bot needs Python 3.6.5+ and requires the python `discord` package (via `pip install discord`). This will be shown below. You'll also want to clone this repo (`git clone https://github.com/dylngg/discord_notification_emailer.git`) or download the zip and unzip it.
+Discord bot needs Python 3.6.5+ and requires the python `discord` v1.0.0+ package (via `pip install discord`). This will be shown below. You'll also want to clone this repo (`git clone https://github.com/dylngg/discord_notification_emailer.git`) or download the zip and unzip it.
 
 ### Installing Python3 and `discord` package on MacOS/Linux
 
